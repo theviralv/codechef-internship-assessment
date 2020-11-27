@@ -1,0 +1,301 @@
+{% extends "base.twig" %}
+
+{% block title %}
+    Dug
+{% endblock title %}
+
+{% block content %}
+    <link rel="stylesheet" href="{{ base_url('home') }}/resources/css/dug.css">
+
+    {# All buttons to  #}
+    <div class="row">
+        <div class="btn-group col-6" role="group" aria-label="Basic example">
+            <button type="button" class="btn btn-info" onclick="window.location.href = '{{path_for('home')}}'"><strong id="tag-btn">Back to All Tags&nbsp;&nbsp;&nbsp;</strong></button>
+        </div>
+        <div class="col-6">
+            <div class="btn-group" role="group" aria-label="Basic example" style="float: right;">
+                <button type="button" class="btn btn-info" onclick="sub_sort()"><strong id="sub-sort">Submissions&nbsp;&nbsp;&nbsp;</strong></button>
+                <button type="button" class="btn btn-info" onclick="acc_sort()"><strong id="acc-sort">Accuracy&nbsp;&nbsp;&nbsp;</strong></button>
+            </div>
+        </div>
+    </div>
+    <br><br>
+
+{% if clear %}
+    <h2 style="color:red;">No questions matches with your searched tag list. Kindly check your search.</h2>
+{% endif %}
+
+<div id="questions">
+    {# Replaced through Javascript. #}
+</div>
+
+<script>
+
+    let questions = {{ questions|json_encode()|raw }};
+    {# stores the question with there information coming from backend in a multidimensional array #}
+    
+    let searched = {{ searched|json_encode()|raw }};
+    {# stores tags user searched for #}
+    
+    let searched_user_tags = {{ searched_user_tags|json_encode()|raw }};
+    {# stores tags user searched for but are user-defined-tags #}
+    
+    let newTags = {};
+    {# stores newly created uaer-defined-tags #}
+    
+    let deleted = {};
+    {# stores all recently deleted tags lnks with there questions #}
+
+    let subs = document.getElementById('sub-sort').innerHTML;
+    let accs = document.getElementById('acc-sort').innerHTML;
+    let ques = document.getElementById('questions').innerHTML;
+    
+    function final(){
+        document.getElementById('sub-sort').innerHTML = subs;
+        document.getElementById('acc-sort').innerHTML = accs;
+        document.getElementById('questions').innerHTML = ques;
+    }
+    
+    {# master function for asynchronous updation of the page on button clicks, cretion and deletion #}
+    function printer(sort_index, order){
+
+        {# sort questions based on submissions/accuracy #}
+        questions.sort(function(a, b){
+            let aa = parseInt(a[sort_index]);
+            let bb = parseInt(b[sort_index]);
+            if(aa < bb) { return -1*order; }
+            if(aa > bb) { return 1*order; }
+            return 0;
+        });
+        
+        ques = "";
+        {# To store the innerHTML of questions #}
+
+        for(let i = 0;i<questions.length;i++){
+            ques += `
+            <div id='`+ questions[i][0] +`' style='display:inline;'>
+            `;
+            
+            ques += `
+                <h2 style="display:inline;">
+                    <a href="https://www.codechef.com/problems/`+ questions[i][0] +`" style="color:black;">`+questions[i][0]+`&nbsp;&nbsp;</a></h2>
+                    <h3 style="display:inline;"><a href="{{ base_url('home') }}/?search=`+ questions[i][1] +`" style="color:black;"><img src="{{ base_url('home') }}/resources/images/author.png">&nbsp;`+questions[i][1]+`</a></h3><br><br>
+                <h3>Accuracy : `+questions[i][2]+` % | Submissions : `+questions[i][3]+`</h3><br>
+            `;
+            
+            {# Highlighted searched tags #}
+            for(let j = 0;j<searched.length;j++){
+                ques += `
+                    <div class="w3-tag w3-round w3-orange" style="padding:3px">
+                        <div class="w3-tag w3-round w3-orange w3-border w3-border-white">
+                            <a href="{{ base_url('home') }}/?search=`+ searched[j] +`">`+ searched[j] +`</a>
+                        </div>
+                    </div>
+                `;
+            }
+
+            {# Highlighted searched_user_tags tags #}
+            for(let j = 0;j<searched_user_tags.length;j++){
+                if([searched_user_tags[j], questions[i][0]] in deleted)
+                    continue;
+                ques += `
+                    <div class="w3-tag w3-round w3-orange" style="padding:3px">
+                        <div class="w3-tag w3-round w3-orange w3-border w3-border-white">
+                            <a href="{{ base_url('home') }}/?search=`+ searched_user_tags[j] +`">`+ searched_user_tags[j] +`</a>
+                        </div>`;
+                ques += `
+                    <i class="fa fa-close" onclick="delete_tag('`+ questions[i][0] +`', '`+ searched_user_tags[j] +`')"></i>
+                `;
+                ques += `
+                    </div>
+                `;
+            }
+            
+            {# other tags #}
+            for(let j =0;j<questions[i][4].length;j++){
+                ques += `
+                    <div class="w3-tag w3-round w3-blue-grey" style="padding:3px">
+                        <div class="w3-tag w3-round w3-blue-grey w3-border w3-border-white">
+                            <a href="{{ base_url('home') }}/?search=`+ questions[i][4][j] +`">`+ questions[i][4][j] +`</a>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            {# other user-tags #}
+            for(let j =0;j<questions[i][5].length;j++){
+                if([questions[i][5][j], questions[i][0]] in deleted)
+                    continue;
+                ques += `
+                    <div class="w3-tag w3-round w3-blue" style="padding:3px">
+                        <div class="w3-tag w3-round w3-blue w3-border w3-border-white">
+                            <a href="{{ base_url('home') }}/?search=`+ questions[i][5][j] +`">`+ questions[i][5][j] +`</a>
+                        </div>`;
+                ques += `
+                    <i class="fa fa-close" onclick="delete_tag('`+ questions[i][0] +`', '`+ questions[i][5][j] +`')"></i>
+                `;
+                ques += `
+                    </div>
+                `;
+            }
+            
+            {# recently created tags #}
+            if(questions[i][0] in newTags){
+                for(let j = 0;j<newTags[questions[i][0]].length;j++){
+                    if([newTags[questions[i][0]][j], questions[i][0]] in deleted)
+                        continue;
+                    ques += `
+                        <div class="w3-tag w3-round w3-blue" style="padding:3px">
+                            <div class="w3-tag w3-round w3-blue w3-border w3-border-white">
+                                <a href="{{ base_url('home') }}/?search=`+ newTags[questions[i][0]][j] +`">`+ newTags[questions[i][0]][j] +`</a>
+                            </div>`;
+                    ques += `
+                        <i class="fa fa-close" onclick="delete_tag('`+ questions[i][0] +`', '`+ newTags[questions[i][0]][j] +`')"></i>
+                    `;
+                    ques += `
+                        </div>
+                    `;
+                }
+            }
+            
+            ques += `
+                </div>
+            `;
+            
+            {# ADD button for logged in user #}
+            {% if user != '@@@' %}
+                ques += `
+                    <button onclick="add_tag('`+questions[i][0]+`', `+questions[i][2]+`,`+questions[i][3]+`, '`+questions[i][1]+`')" class="w3-blue"><strong>+ADD</strong></button>                
+                `;
+            {% endif %}
+            
+            ques += `
+                <br>
+                <hr>
+                <br>
+            `;
+        }
+    }
+
+    {# Called on click of sort by submissions button #}
+    function sub_sort(){
+        accs = 'Accuracy&nbsp;&nbsp;&nbsp;';
+        
+        if(subs == 'Submissions&nbsp;&nbsp;&nbsp;' || subs == 'Submissions&nbsp;&nbsp;&nbsp;V'){
+            printer(3, 1);
+            subs = 'Submissions&nbsp;&nbsp;&nbsp;Λ';
+        }
+        else{
+            printer(3, -1);
+            subs = 'Submissions&nbsp;&nbsp;&nbsp;V';
+        }
+        
+        final();
+    }
+
+    {# Called on click of sort by accuracy button #}
+    function acc_sort(){
+        subs = 'Submissions&nbsp;&nbsp;&nbsp;';
+        
+        if(accs == 'Accuracy&nbsp;&nbsp;&nbsp;' || accs == 'Accuracy&nbsp;&nbsp;&nbsp;V'){
+            printer(2, 1);
+            accs = 'Accuracy&nbsp;&nbsp;&nbsp;Λ';
+        }
+        else{
+            printer(2, -1);
+            accs = 'Accuracy&nbsp;&nbsp;&nbsp;V';
+        }
+        
+        final();
+    }
+
+    sub_sort();
+    
+    {# asynchronous function called when when user tries to add a new-tag #}
+    async function add_tag(question, acc, subs, author){
+        let tag = prompt("Name of the tag to add :");
+        
+        if(!tag)
+            return;
+
+        const body = JSON.stringify({ 
+            question:question,
+            tag:tag,
+            user:'{{user}}',
+            acc:acc,
+            subs:subs,
+            author:author
+        });
+
+        let res = await fetch('{{base_url('home')}}/', {
+            method: 'POST',
+            body: body,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+        });
+
+        let response = await res.json();
+
+        if(!response){
+            alert("Tag already linked to the question!");
+            return;
+        }
+
+        if(!(question in newTags))
+            newTags[question] = [];
+        
+        newTags[question].push(tag);
+        
+        add_to_html = ``;
+
+        add_to_html += `
+            <div class="w3-tag w3-round w3-blue" style="padding:3px">
+                <div class="w3-tag w3-round w3-blue w3-border w3-border-white">
+                    <a href="{{ base_url('home') }}/?search=`+ tag +`">`+ tag +`</a>
+                </div>`;
+            add_to_html += `
+                <i class="fa fa-close" onclick="delete_tag('`+ question +`', '`+ tag +`')"></i>
+            `
+            add_to_html += `
+                </div>
+            `;
+        document.getElementById(question).innerHTML += add_to_html;
+    }
+
+    {# Called when user deletes any of the user-defined-tag for some question #}
+    function delete_tag(question, tag){
+        let val = confirm(tag +" WILL BE DELETED FOR "+ question +" QUESTION FOREVER. CONTINUE?");
+        
+        if(!val)
+            return;
+        
+        const body = JSON.stringify({ 
+            delete:true,
+            tag:tag,
+            question:question,
+            user:'{{user}}'
+        });
+
+        fetch('{{base_url('home')}}/', {
+            method: 'POST',
+            body: body,
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+        })
+
+        deleted[[tag, question]] = true;
+        
+        accs = 'Accuracy&nbsp;&nbsp;&nbsp;';
+        printer(3, 1);
+        subs = 'Submissions&nbsp;&nbsp;&nbsp;Λ';
+        final();
+    }
+
+</script>
+
+{% endblock content %}

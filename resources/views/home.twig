@@ -1,0 +1,405 @@
+{% extends "base.twig" %}
+
+{% block title %}
+    Home
+{% endblock title %}
+
+{% block head %}
+    Problem Tags
+{% endblock head %}
+
+{% block content %}
+
+<h4>
+    This page will help you search for problems on CodeChef based on their tags.
+    You can also find problem set by you favorite authors, of varying difficulty levels, of a particular topic and a lot more.
+</h4>
+
+<br>
+
+{# Diffrent buttons that segregates/sorts the tags #}
+<div style="display: grid; grid-template-columns:auto auto";>
+    <div class="btn-group" role="group" aria-label="Basic example">
+        <button type="button" class="btn btn-info" onclick="authorFunc()"><strong id="auth-btn">Authors&nbsp;&nbsp;&nbsp;</strong></button>
+        <button type="button" class="btn btn-info" onclick="tag_func()"><strong id="tag-btn">Tags&nbsp;&nbsp;&nbsp;</strong></button>
+        
+        {% if user != '@@@' %}
+            <button type="button" class="btn btn-warning" onclick="my_tags()"><strong id="my-tag-btn">My Tags&nbsp;&nbsp;&nbsp;</strong></button>
+        {% endif %}
+    </div>
+    
+    <div>
+        <div class="btn-group" role="group" aria-label="Basic example" style="float: right;">
+            <button type="button" class="btn btn-info" onclick="sort_by_tag()"><strong id="tag-sort">Tag Name&nbsp;&nbsp;&nbsp;Λ</strong></button>
+            <button type="button" class="btn btn-info" onclick="sort_by_count()"><strong id="cnt-sort">Problem Count&nbsp;&nbsp;&nbsp;</strong></button>
+        </div>
+    </div>
+</div>
+
+<br><br>
+
+<div id="tag_grid" style="display: grid; grid-template-columns:auto auto auto auto";>
+    {# Filled with Tags from javascript. #}
+</div>
+
+
+<script>
+    let all_tags = {{ arr|json_encode()|raw }};
+    {# stores ALL the tags coming from backend #}
+    
+    let author = {{ auth|json_encode()|raw }};
+    {# stores author tags coming from backend #}
+    
+    let actual_tags = {{ tag|json_encode()|raw }};
+    {# stores actual_tags #}
+
+    let deleted = {};
+    {# stores all deleted tags so that they gets invisible in front end wehan updating the tags grid #}
+
+    {% if user != '@@@' %}
+        {# Only executed if user is logged in #}
+        let user_tags = {{ my_tags|json_encode()|raw }};
+    {% endif %}
+
+    let auth = document.getElementById('auth-btn').innerHTML;
+    let tag = document.getElementById('tag-btn').innerHTML;
+
+    {% if user != '@@@' %}
+        let my_tag = document.getElementById('my-tag-btn').innerHTML;
+    {% endif %}
+    
+    let tagSort = document.getElementById('tag-sort').innerHTML;
+    let cntSort = document.getElementById('cnt-sort').innerHTML;
+    let tag_grid = document.getElementById('tag_grid').innerHTML;
+
+    function final(){
+        {# final method called after all alterations to set all things up again. #}
+
+        document.getElementById('auth-btn').innerHTML = auth;
+        document.getElementById('tag-btn').innerHTML = tag;
+
+        {% if user != '@@@' %}
+            document.getElementById('my-tag-btn').innerHTML = my_tag;
+        {% endif %}
+        
+        document.getElementById('tag-sort').innerHTML = tagSort;
+        document.getElementById('cnt-sort').innerHTML = cntSort;
+        document.getElementById('tag_grid').innerHTML = tag_grid;
+    }
+
+    function color_decider(type){
+        {# decides color based on tag type #}
+
+        if(type == 'author'){
+            return "w3-light-blue";
+        }
+        else if(type == 'actual_tag'){
+            return "w3-blue";
+        }
+        else{
+            return "w3-orange";
+        }
+    }
+
+    function printer(to_print, sort_index, order){
+        {# This is the master function that is called for all updations in tag grid after a button is clicked #}
+
+        {# Sorts tag list based on submissions or accuracy #}
+        if(sort_index == 1){
+            to_print.sort(function(a, b){
+                let aa = parseInt(a[sort_index]);
+                let bb = parseInt(b[sort_index]);
+                if(aa < bb) { return -1*order; }
+                if(aa > bb) { return 1*order; }
+                return 0;
+            });
+        }
+        else{
+            to_print.sort(function(a, b){
+                if(a[sort_index] < b[sort_index]) { return -1*order; }
+                if(a[sort_index] > b[sort_index]) { return 1*order; }
+                return 0;
+            });
+        }
+        
+        {# To store the innerHTML of the tag_grid id element #}
+        tag_grid = '';
+        
+        for(let i= 0;i<to_print.length;i++){
+            if(to_print[i][0] in deleted){
+                continue;
+            }
+            let color = color_decider(to_print[i][2]);
+            tag_grid += `    
+                    <div style="padding: 6px;text-align: center;">
+                            <div class="w3-tag w3-round `+color+`" style="padding:3px">
+                                <a href="{{base_url('home')}}?search=`+to_print[i][0]+`">
+                                    <div class="w3-tag w3-round `+color+` w3-border w3-border-white">
+                                        <strong>`+to_print[i][0]+`</strong>
+                                    </div>
+                                </a>`;
+            if(to_print[i][2] == 'user_tag'){
+                tag_grid += `
+                    <i class="fa fa-close" onclick="delete_tag('`+ to_print[i][0] +`')"></i>
+                `;
+            }            
+            tag_grid +=`    
+                            </div>
+                            <div><strong>×&nbsp;`+to_print[i][1]+`</strong></div>
+                    </div>
+            `;
+        }
+    }
+
+    {# default function #}
+    function none(){
+        auth = "Authors&nbsp;&nbsp;&nbsp;";
+        tag = "Tags&nbsp;&nbsp;&nbsp;";
+        my_tag = "My Tags&nbsp;&nbsp;&nbsp;";
+        
+        if(tagSort == "Tag Name&nbsp;&nbsp;&nbsp;"){
+            if(cntSort[cntSort.length-1] != 'V'){
+                printer(all_tags, 1, 1);
+            }
+            else{
+                printer(all_tags, 1, -1);
+            }
+        }
+        else{
+            if(tagSort[tagSort.length-1] != 'V'){
+                printer(all_tags, 0, 1);
+            }
+            else{
+                printer(all_tags, 0, -1);
+            }
+        }
+
+        final();
+    }
+    
+    {% if user != '@@@' %}
+
+        {# Called when my tags button clicked by logged in user #}
+        function my_tags(){
+            if(my_tag == "My Tags&nbsp;&nbsp;&nbsp;✔"){
+                none();
+                return;
+            }
+            
+            auth = "Authors&nbsp;&nbsp;&nbsp;";
+            tag = "Tags&nbsp;&nbsp;&nbsp;";
+            my_tag = "My Tags&nbsp;&nbsp;&nbsp;✔";
+            
+            if(tagSort == "Tag Name&nbsp;&nbsp;&nbsp;"){
+                if(cntSort[cntSort.length-1] != 'V'){
+                    printer(user_tags, 1, 1);
+                }
+                else{
+                    printer(user_tags, 1, -1);
+                }
+            }
+            else{
+                if(tagSort[tagSort.length-1] != 'V'){
+                    printer(user_tags, 0, 1);
+                }
+                else{
+                    printer(user_tags, 0, -1);
+                }
+            }
+            
+            final();
+        }
+    {% endif %}
+
+    {# Called when author button clicked #}
+    function authorFunc(){
+        if(auth == "Authors&nbsp;&nbsp;&nbsp;✔"){
+            none();
+            return;
+        }
+        
+        auth = "Authors&nbsp;&nbsp;&nbsp;✔";
+        tag = "Tags&nbsp;&nbsp;&nbsp;";
+        my_tag = "My Tags&nbsp;&nbsp;&nbsp;";
+        
+        if(tagSort == "Tag Name&nbsp;&nbsp;&nbsp;"){
+            if(cntSort[cntSort.length-1] != 'V'){
+                printer(author, 1, 1);
+            }
+            else{
+                printer(author, 1, -1);
+            }
+        }
+        else{
+            if(tagSort[tagSort.length-1] != 'V'){
+                printer(author, 0, 1);
+            }
+            else{
+                printer(author, 0, -1);
+            }
+        }
+        
+        final();
+    }
+    
+    {# Called when tags button clicked to show actual_tags #}
+    function tag_func(){
+        if(tag == "Tags&nbsp;&nbsp;&nbsp;✔"){
+            none();
+            return;
+        }
+        
+        auth = "Authors&nbsp;&nbsp;&nbsp;";
+        tag = "Tags&nbsp;&nbsp;&nbsp;✔";
+        my_tag = "My Tags&nbsp;&nbsp;&nbsp;";
+        
+        if(tagSort == "Tag Name&nbsp;&nbsp;&nbsp;"){
+            if(cntSort[cntSort.length-1] != 'V'){
+                printer(actual_tags, 1, 1);
+            }
+            else{
+                printer(actual_tags, 1, -1);
+            }
+        }
+        else{
+            if(tagSort[tagSort.length-1] != 'V'){
+                printer(actual_tags, 0, 1);
+            }
+            else{
+                printer(actual_tags, 0, -1);
+            }
+        }
+        
+        final();
+    }
+    
+    {# Called when sort by tag name button clicked #}
+    function sort_by_tag(){
+        cntSort = "Problem Count&nbsp;&nbsp;&nbsp;";
+        
+        if(tagSort == "Tag Name&nbsp;&nbsp;&nbsp;" || tagSort == "Tag Name&nbsp;&nbsp;&nbsp;V"){
+            tagSort = "Tag Name&nbsp;&nbsp;&nbsp;Λ";
+            
+            if(auth[auth.length-1] == '✔'){
+                printer(author, 0, 1);
+            }
+            else if(tag[tag.length-1] == '✔'){
+                printer(actual_tags, 0, 1);
+            }
+            
+            {% if user != '@@@' %}
+                else if(my_tag[my_tag.length-1] == '✔'){
+                    printer(user_tags, 0, 1);
+                }
+            {% endif %}
+            
+            else{
+                printer(all_tags, 0, 1);
+            }
+        }
+        else{
+            tagSort = "Tag Name&nbsp;&nbsp;&nbsp;V";
+            
+            if(auth[auth.length-1] == '✔'){
+                printer(author, 0, -1);
+            }
+            else if(tag[tag.length-1] == '✔'){
+                printer(actual_tags, 0, -1);
+            }
+            
+            {% if user != '@@@' %}
+                else if(my_tag[my_tag.length-1] == '✔'){
+                    printer(user_tags, 0, -1);
+                }
+            {% endif %}
+            
+            else{
+                printer(all_tags, 0, -1);
+            }
+        }
+        
+        final();
+    }
+    
+
+    {# Called when sort by priblem count clicked #}
+    function sort_by_count(){
+        tagSort = "Tag Name&nbsp;&nbsp;&nbsp;";
+        
+        if(cntSort == "Problem Count&nbsp;&nbsp;&nbsp;" || cntSort == "Problem Count&nbsp;&nbsp;&nbsp;V"){
+            cntSort = "Problem Count&nbsp;&nbsp;&nbsp;Λ";
+            
+            if(auth[auth.length-1] == '✔'){
+                printer(author, 1, 1);
+            }
+            else if(tag[tag.length-1] == '✔'){
+                printer(actual_tags, 1, 1);
+            }
+            
+            {% if user != '@@@' %}
+                else if(my_tag[my_tag.length-1] == '✔'){
+                    printer(user_tags, 1, 1);
+                }
+            {% endif %}
+            
+            else{
+                printer(all_tags, 1, 1);
+            }
+        }
+        else{
+            cntSort = "Problem Count&nbsp;&nbsp;&nbsp;V";
+            
+            if(auth[auth.length-1] == '✔'){
+                printer(author, 1, -1);
+            }
+            else if(tag[tag.length-1] == '✔'){
+                printer(actual_tags, 1, -1);
+            }
+            
+            {% if user != '@@@' %}
+                else if(my_tag[my_tag.length-1] == '✔'){
+                    printer(user_tags, 1, -1);
+                }
+            {% endif %}
+            
+            else{
+                printer(all_tags, 1, -1);
+            }
+        }
+        
+        final();
+    }
+    
+    none();
+
+    {# Called when a user-tag is deleted #}
+    function delete_tag(tag){
+        let val = confirm(tag +" WILL BE DELETED FOR ALL QUESTIONS FOREVER. CONTINUE?");
+        
+        if(!val)
+            return;
+        
+        const body = JSON.stringify({ 
+            delete:true,
+            tag:tag,
+            user:'{{user}}'
+        });
+
+        fetch('{{base_url('home')}}/', {
+            method: 'POST',
+            body: body,
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+        })
+
+        deleted[tag] = true;
+        
+        my_tag = "My Tags&nbsp;&nbsp;&nbsp;";
+        my_tags();
+    }
+
+</script>
+{% endblock content %}

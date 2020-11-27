@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.css" />
+ 
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    
+    <link rel="stylesheet" href="{{ base_url("home") }}/resources/css/loader.css">
+
+    <title>
+        {% block title %}
+            replace me
+        {% endblock title %}
+    </title>
+
+</head>
+
+<body class="w3-blue-grey">
+
+    {# CSS loading floater, If page takes time to load. #}
+    <div id="loader" class="center"></div>
+    
+    <br>
+    
+    <div class="container w3-card-4 w3-pale-blue" id="hide">
+        <br>
+        
+        {% if user == "@@@" %}
+            {# If user is not logged in shows log in button #}
+            
+            <div style="display: grid; grid-template-columns:auto";>
+                <div>
+                    <form method="POST">
+                        <input type="hidden" name="login" value="1" />
+                        <button type="submit" class="btn btn-warning" style="float: right"><strong>LogIn</strong></button>
+                    </form>
+                </div>
+            </div><br>
+
+        {% else %}
+            {# If user if logged in shows log out button #}
+            
+            <div style="display: grid; grid-template-columns:auto auto";>
+                <div>
+                    <h4 style="float: left;">Hello <em>{{user}}</em> !</h4>
+                </div>
+                <div>
+                    <form method="POST">
+                        <input type="hidden" name="csrf_name" value="{{ name }}">
+                        <input type="hidden" name="csrf_value" value="{{ value }}">
+                        <input type="hidden" name="logout" value="1" />
+                        <button type="submit" class="btn btn-warning" style="float: right"><strong>LogOut</strong></button>
+                    </form>
+                </div>
+            </div><br>
+
+        {% endif %}
+
+        <div style="border-bottom: 1px solid; display: grid; grid-template-columns:auto 35px auto";>
+            
+            <div><h1>
+                {% block head %}
+                    Problems Dug
+                {% endblock head %}
+            </h1></div>
+            
+            <div class="w3-xxlarge fa fa-search"></div>
+            
+            <div>  
+                {# Auto-complete search box. #}
+                <h1>
+                    {% if search %}
+                        <form method="GET">
+                            <input type="text" class="form-control" name="search" id="search" value="{{ search }}"/>
+                        </form>
+                    {% else %}
+                        <form method="GET">
+                            <input type="text" class="form-control" name="search" id="search" value="Enter comma separated tag list"
+                            onblur="if(this.value==''){ this.value='Enter comma separated tag list'; this.style.color=rgb(117, 117, 117);}"
+                            onfocus="if(this.value=='Enter comma separated tag list'){ this.value=''; this.style.color=rgb(117, 117, 117);}"
+                            style="color:rgb(117, 117, 117);"/>
+                        </form>
+                    {% endif %}
+                </h1>    
+            </div>
+
+        </div>
+        
+        <br>
+        
+        {% block content %}
+            {# Replace me... #}
+        {% endblock content %}
+        
+        <br>
+    
+    </div>
+    
+    <br>
+    
+    <legend style="text-align: center;">Developed with 💓 by Vishesh Maheshwari</legend>
+    
+    <script>
+        
+        {# javascript for the css loader #}
+        document.onreadystatechange = function() { 
+            if(document.readyState !== "complete"){         
+                document.getElementById("hide").style.visibility = "hidden";
+                document.querySelector("#loader").style.visibility = "visible"; 
+            }
+            else{
+                document.querySelector("#loader").style.display = "none"; 
+                document.getElementById("hide").style.visibility = "visible";        
+            } 
+        };
+        
+        {# jQuery function for auto-complete #}
+        $(function() {
+            function split( val ) {
+                return val.split(/,\s*/);
+            }
+            function extractLast( term ) {
+                return split( term ).pop();
+            }
+            $( "#search" ).autocomplete({
+                source: function( request, response ) {
+                    $.getJSON( "ajax-db-search.php", {
+                    term: extractLast( request.term )
+                    }, response );
+                },
+
+                focus: function() {
+                    // prevent value inserted on focus
+                    return false;
+                },
+
+                search: function() {
+                    // custom minLength
+                    var term = extractLast( this.value );
+                    if ( term.length < 1 ) {
+                        return false;
+                    }
+                },
+
+                select: function( event, ui ) {
+                    var terms = split( this.value );
+                    
+                    terms.pop();    // remove the current input
+                    
+                    terms.push( ui.item.value );    // add the selected item
+                    
+                    terms.push( "" );   // add placeholder to get the comma-and-space at the end
+
+                    this.value = terms.join( "," );
+                    return false;
+                }
+            });
+        });
+
+    </script>  
+</body>
+</html>
